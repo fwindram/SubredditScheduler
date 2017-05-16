@@ -7,14 +7,13 @@
 #
 # Bot to post regularly to a particular subreddit
 
-import logging
-import time
-import praw
 import csv
-from pprint import pprint
+import logging
 import textwrap
-from prawcore import RequestException
+import time
 
+import praw
+from prawcore import RequestException
 
 # Set up logging
 # logging.basicConfig(level=logging.INFO)
@@ -34,11 +33,7 @@ logger.addHandler(handler)
 
 # CONFIG
 reddit = praw.Reddit('bot1')
-default_sub = "getmetosleep"
-
-
-class EmptyQueueError(Exception):
-    pass
+default_sub = "test"    # Insert your default sub here
 
 
 class MalformedPostError(Exception):
@@ -122,7 +117,6 @@ def submit_post(post):
     logger.info("Post submitted successfully.")
 
 
-
 def write_subqueue(subqueue):
     """Write subqueue out to csv for next time"""
     logger.debug("Writing subqueue to disk.")
@@ -163,4 +157,5 @@ def main():
     logger.info("Ended execution at {0}".format(time.strftime("%H:%M:%S, %d/%m/%Y", time.localtime())))
     logger.info("Executed in {0}.".format(runtime))
     logger.info("-----------------------------------------")
+
 main()
