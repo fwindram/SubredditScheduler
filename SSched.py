@@ -66,34 +66,34 @@ def read_subqueue():
     except FileNotFoundError:
         logger.warning("No submission queue present. Using empty queue.")
 
-    logger.info("{0} entries in submission queue.".format(len(subqueue)))
+    logger.info("Entries in submission queue: {0}.".format(len(subqueue)))
 
     return subqueue
 
 
-def pop_post(subqueue, fallback_sub):
-    logger.debug("Popping submission from queue.")
-    post_entry = []
+def validate_post(post_entry, fallback_sub):
+    logger.debug("Validating popped submission from queue.")
 
     try:
         using_default = False
-        post_entry = subqueue.pop(0)
+        post_entry_working = post_entry
 
         # Process entry properly, removing whitespace and checking values.
-        if len(post_entry) == 2:
-            post_entry.append(fallback_sub)     # Use default subreddit if not defined in entry.
+        if len(post_entry_working) == 2:
+            post_entry_working.append(fallback_sub)     # Use default subreddit if not defined in entry.
             using_default = True
             logger.debug("No subreddit defined, using default of {0}.".format(fallback_sub))
-        if len(post_entry) < 3:     # Should catch many malformed entries.
+        if len(post_entry_working) > 3:     # Should catch many malformed entries.
             raise MalformedPostEntry
-        post_entry = [x.strip() for x in post_entry]  # Cut whitespace from each string.
+        post_entry_working = [x.strip() for x in post_entry_working]  # Cut whitespace from each string.
         # Should possibly try to validate URLs here.
         # Elegantly shorten descriptions over 300 chars.
-        post_entry[1] = textwrap.shorten(post_entry[1], width=300, placeholder="...")
+        post_entry_working[1] = textwrap.shorten(post_entry_working[1], width=300, placeholder="...")
 
-        post = RedditSubmission(post_entry[0], post_entry[1], post_entry[2])    # Create RedditSubmission obj
+        # Create RedditSubmission obj
+        post = RedditSubmission(post_entry_working[0], post_entry_working[1], post_entry_working[2])
 
-        logger.info("Post successfully popped from queue.")
+        logger.info("Post successfully validated.")
         logger.debug("--------------- METADATA ----------------")
         logger.debug("{0:>9}: {1.description:}".format("Title", post))
         logger.debug("{0:>9}: {1.url}".format("Url", post))
@@ -102,18 +102,33 @@ def pop_post(subqueue, fallback_sub):
         else:
             logger.debug("{0:>9}: {1.subreddit}".format("Subreddit", post))
         logger.debug("-----------------------------------------")
+
     except MalformedPostEntry:
-        err_string = "".join([x for x in post_entry])
+        err_string = "".join(["{0}|".format(x) for x in post_entry]).rstrip("|")
         logger.error("Malformed post entry: {0}".format(err_string))
+        with open("data/subqueue_errored.csv", "a", newline='') as errorfile:   # Write errored line to errorfile.
+            errorwriter = csv.writer(errorfile, delimiter='|')
+            errorwriter.writerow(post_entry)
         raise MalformedPostEntry
-    return post, subqueue
+
+    return post
 
 
 def main():
+    starttime = time.perf_counter()
+    logger.info("-----------------------------------------")
+    logger.info("Started execution at {0}".format(time.strftime("%H:%M:%S, %d/%m/%Y", time.localtime())))
+    logger.info("-----------------------------------------")
     queue = read_subqueue()
-    popped = pop_post(queue, default_sub)
-    post = popped[0]
-    queue = popped[1]
-    pprint(post)
-
+    popped = queue.pop(0)
+    try:
+        validated = validate_post(popped, default_sub)
+    except MalformedPostEntry:
+        logger.critical("Exiting due to malformed post.")
+    endtime = time.perf_counter()
+    runtime = time.strftime("%H:%M:%S", time.gmtime(endtime - starttime))
+    logger.info("-----------------------------------------")
+    logger.info("Ended execution at {0}".format(time.strftime("%H:%M:%S, %d/%m/%Y", time.localtime())))
+    logger.info("Executed in {0}.".format(runtime))
+    logger.info("-----------------------------------------")
 main()

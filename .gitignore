@@ -41,5 +41,5 @@ Thumbs.db
 #################
 .idea/
 praw.ini
-subqueue.csv
+*.csv
 requirements.txt
