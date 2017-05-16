@@ -13,6 +13,8 @@ import praw
 import csv
 from pprint import pprint
 import textwrap
+from prawcore import RequestException
+
 
 # Set up logging
 # logging.basicConfig(level=logging.INFO)
@@ -39,7 +41,7 @@ class EmptyQueueError(Exception):
     pass
 
 
-class MalformedPostEntry(Exception):
+class MalformedPostError(Exception):
     pass
 
 
@@ -84,7 +86,7 @@ def validate_post(post_entry, fallback_sub):
             using_default = True
             logger.debug("No subreddit defined, using default of {0}.".format(fallback_sub))
         if len(post_entry_working) > 3:     # Should catch many malformed entries.
-            raise MalformedPostEntry
+            raise MalformedPostError
         post_entry_working = [x.strip() for x in post_entry_working]  # Cut whitespace from each string.
         # Should possibly try to validate URLs here.
         # Elegantly shorten descriptions over 300 chars.
@@ -103,15 +105,22 @@ def validate_post(post_entry, fallback_sub):
             logger.debug("{0:>9}: {1.subreddit}".format("Subreddit", post))
         logger.debug("-----------------------------------------")
 
-    except MalformedPostEntry:
+    except MalformedPostError:
         err_string = "".join(["{0}|".format(x) for x in post_entry]).rstrip("|")
         logger.error("Malformed post entry: {0}".format(err_string))
         with open("data/subqueue_errored.csv", "a", newline='') as errorfile:   # Write errored line to errorfile.
             errorwriter = csv.writer(errorfile, delimiter='|')
             errorwriter.writerow(post_entry)
-        raise MalformedPostEntry
+        raise MalformedPostError
 
     return post
+
+
+def submit_post(post):
+    subreddit = reddit.subreddit(post.subreddit)
+    subreddit.submit(title=post.description, url=post.url)
+    logger.info("Post submitted successfully.")
+
 
 
 def write_subqueue(subqueue):
@@ -121,6 +130,7 @@ def write_subqueue(subqueue):
     with open("data/subqueue.csv", "w", newline='') as queuefile:
         queuewriter = csv.writer(queuefile, delimiter='|')
         queuewriter.writerows(subqueue)
+    logger.info("Queued submissions:{0}")
 
 
 def main():
@@ -130,14 +140,21 @@ def main():
     logger.info("-----------------------------------------")
     queue = read_subqueue()
     if queue:
-        popped = queue.pop(0)
-        logger.debug("Popped post string from queue.")
-        try:
-            validated = validate_post(popped, default_sub)
-            # Post to Reddit HERE
-        except MalformedPostEntry:
-            logger.critical("Did not post due to malformed post string!")
-        write_subqueue(queue)
+        loopagain = True
+        while loopagain:
+            loopagain = False   # Only do 1 run.
+            popped = queue.pop(0)
+            logger.debug("Popped post string from queue.")
+            try:
+                validated = validate_post(popped, default_sub)
+                submit_post(validated)
+            except MalformedPostError:
+                logger.critical("Did not post due to malformed post string!")
+                loopagain = True    # Force another run.
+            except RequestException as err:
+                logger.critical("Could not post:{0}".format(err.original_exception))
+                queue.insert(0, popped)     # Insert string back into queue for later.
+            write_subqueue(queue)
     else:
         logger.info("No entries in queue.")
     endtime = time.perf_counter()
