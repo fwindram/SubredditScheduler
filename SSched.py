@@ -64,7 +64,7 @@ def read_subqueue():
                 subqueue.append([x for x in entry])
                 logger.debug("Loaded {0}.".format(entry[0]))
     except FileNotFoundError:
-        logger.warning("No submission queue present. Using empty queue.")
+        logger.warning("No submission queue present. Returning empty queue.")
 
     logger.info("Entries in submission queue: {0}.".format(len(subqueue)))
 
@@ -114,17 +114,32 @@ def validate_post(post_entry, fallback_sub):
     return post
 
 
+def write_subqueue(subqueue):
+    """Write subqueue out to csv for next time"""
+    logger.debug("Writing subqueue to disk.")
+
+    with open("data/subqueue.csv", "w", newline='') as queuefile:
+        queuewriter = csv.writer(queuefile, delimiter='|')
+        queuewriter.writerows(subqueue)
+
+
 def main():
     starttime = time.perf_counter()
     logger.info("-----------------------------------------")
     logger.info("Started execution at {0}".format(time.strftime("%H:%M:%S, %d/%m/%Y", time.localtime())))
     logger.info("-----------------------------------------")
     queue = read_subqueue()
-    popped = queue.pop(0)
-    try:
-        validated = validate_post(popped, default_sub)
-    except MalformedPostEntry:
-        logger.critical("Exiting due to malformed post.")
+    if queue:
+        popped = queue.pop(0)
+        logger.debug("Popped post string from queue.")
+        try:
+            validated = validate_post(popped, default_sub)
+            # Post to Reddit HERE
+        except MalformedPostEntry:
+            logger.critical("Did not post due to malformed post string!")
+        write_subqueue(queue)
+    else:
+        logger.info("No entries in queue.")
     endtime = time.perf_counter()
     runtime = time.strftime("%H:%M:%S", time.gmtime(endtime - starttime))
     logger.info("-----------------------------------------")
