@@ -1,7 +1,6 @@
 # SSched.py
 # Skeletorfw
-# 16/05/17
-# Version 0.0.1
+# 17/05/17
 #
 # Python 3.4.1
 #
