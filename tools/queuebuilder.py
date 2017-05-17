@@ -31,20 +31,20 @@ class BuilderShell(cmd.Cmd):
         """Change Subreddit field on current working entry: sr AskReddit"""
         self.cwe[2] = arg
 
-    def do_default_sr(self, arg):
-        """Change default Subreddit field (also changes CWE sr field): default_sr AskReddit"""
+    def do_sr_default(self, arg):
+        """Change default Subreddit field (also changes CWE sr field): sr_default AskReddit"""
         self.cwe[2] = arg
         self.cwe_default[2] = arg
 
     def do_commit(self, arg):
         """Commit current working entry to stage and reinitialise working entry as default:    commit"""
-        if self.cwe[0] == '' or self.cwe [1] == '':
+        if self.cwe[0] == '' or self.cwe[1] == '':
             print("Entry must have both a title and a url!\n")
         else:
             if self.cwe[2] == '':
                 del self.cwe[2]
             self.staged.append(self.cwe)
-            self.cwe = self.cwe_default
+            self.cwe = list(self.cwe_default)
 
     def do_print(self, arg):
         """Print current working entry to screen:   print"""
@@ -94,7 +94,7 @@ class BuilderShell(cmd.Cmd):
     def do_reset(self, arg):
         """Delete staged queue, current working entry and reset all defaults:   reset"""
         self.cwe_default = ['', '', '']
-        self.cwe = self.cwe_default
+        self.cwe = list(self.cwe_default)
         self.staged = []
 
     def do_exit(self, arg):
@@ -102,11 +102,16 @@ class BuilderShell(cmd.Cmd):
         print("Exiting...")
         return True
 
+    def do_dump(self, arg):
+        """Print all current internal variables straight out for debugging purposes:   dump"""
+        print("CWE: {0}".format(self.cwe))
+        print("CWE DEFAULT: {0}".format(self.cwe_default))
+        print("STAGE: {0}\n".format(self.staged))
     # Alternative commands
 
     def do_clear(self, arg):
         """Clear current working entry to default to start again:  clear"""
-        self.cwe = self.cwe_default
+        self.cwe = list(self.cwe_default)
 
     def do_ll(self, arg):
         """Print staged queue to screen.    ll"""
