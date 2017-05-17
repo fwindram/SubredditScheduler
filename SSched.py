@@ -22,7 +22,7 @@ logger.setLevel(logging.DEBUG)
 
 # Create logfile handler
 handler = logging.FileHandler('log/SSCHED.out')
-handler.setLevel(logging.DEBUG)  # File logging level
+handler.setLevel(logging.INFO)  # File logging level
 
 # Create formatter and add to handler
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(funcName)s - %(message)s')
@@ -124,7 +124,7 @@ def write_subqueue(subqueue):
     with open("data/subqueue.csv", "w", newline='') as queuefile:
         queuewriter = csv.writer(queuefile, delimiter='|')
         queuewriter.writerows(subqueue)
-    logger.info("Queued submissions:{0}")
+    logger.info("Currently queued submissions:{0}".format(len(subqueue)))
 
 
 def main():
