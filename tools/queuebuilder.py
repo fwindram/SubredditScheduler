@@ -77,6 +77,7 @@ class BuilderShell(cmd.Cmd):
             arg = int(arg)
             try:
                 self.cwe = self.staged.pop(arg)
+                print("Loaded entry {0} from stage.".format(arg))
             except IndexError:
                 print("Entry {0} does not exist in the staged queue.\n")
         except TypeError:
